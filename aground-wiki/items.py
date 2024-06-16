@@ -26,6 +26,16 @@ recipes: list[etree._Element] = [recipe for root in data for recipe in root.find
 quests: list[etree._Element] = [quest for root in data for quest in root.findall("quest", None)]
 enemies: list[etree._Element] = [enemy for root in data for enemy in root.findall("enemy", None)]
 
+LANG = {}
+for root in data:
+    for lang in root.findall("lang", None):
+        lang_map = LANG.setdefault(lang.get("id", None), {})
+        for section in lang.findall("section", None):
+            for text in section.findall("text", None):
+                text_string = text.text.strip()
+                for connector in ['>', '.']:
+                    text_id = section.get("id", None) + connector + text.get("id", None)
+                    lang_map[text_id] = text_string
 
 # item id -> list of enemies
 looted_from: dict[str, list[str]] = {}
@@ -130,11 +140,23 @@ for source_data in data:
     item: etree._Element
     for item in source_data.findall("./item", None):
         item_id = item.get("id", None)
+        if item.get('name', None):
+            try:
+                item_name = LANG["en_US"][item.get("name", None)]
+            except KeyError:
+                item_name = LANG["en_US"][f"item.names>{item.get("name", None)}"]
+        else:
+            try:
+                item_name = LANG["en_US"][f"item.names>{item_id}"]
+            except KeyError:
+                print(f"Failed to get name for {item_id}")
+                item_name = item_id
         assert isinstance(item_id, str)
         # Still missing: effect and alike? not sure tbh
         result = {
             "source": source_data.get("source", None),
             "id": item_id,
+            "name": item_name,
             **{prop: item.get(prop, None) for prop in common_properties},
             **{
                 '_'.join(composite_path): get_composite(item, composite_path)
@@ -159,7 +181,6 @@ for source_data in data:
             if isinstance(val, dict):
                 for inner_key, inner_val in list(val.items()):
                     if not inner_val:
-                        del result[key][inner_key]
                         del val[inner_key]
             if not val:
                 del result[key]
