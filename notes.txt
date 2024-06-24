@@ -1,0 +1,8 @@
+ffmpeg -framerate 10 -i %d.png -c:v libx264 -r 1 -q:v 1 out.mp4 -y 
+
+ffmpeg -framerate 10 -i %d.png -c:v ffv1 -pix_fmt yuv420p out.mkv
+
+ffmpeg -framerate 10 -i %d.png -plays 0 out.apng
+
+ffmpeg -framerate 10 -i %d.png -vf "palettegen" palette.png
+ffmpeg -framerate 10 -i %d.png -i palette.png -lavfi "paletteuse" -loop 0 out.gif
