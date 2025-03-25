@@ -45,9 +45,11 @@ output_folder.mkdir(parents=True, exist_ok=True)
 tree: etree._ElementTree = etree.parse(cached, None)
 
 magick = False
-try: except Exception:
+try:
     if run(['magick', '-version'], capture_output=True).returncode == 0:
         magick = True
+except Exception:
+    print("ImageMagick not found")
 
 
 def show(element):
