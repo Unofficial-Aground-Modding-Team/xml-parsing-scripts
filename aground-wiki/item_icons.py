@@ -4,6 +4,7 @@ from lxml import etree
 from pathlib import Path
 from dataclasses import dataclass
 from PIL import Image
+from subprocess import run
 
 DATA_FOLDER = Path("data")
 
@@ -42,6 +43,10 @@ output_folder = Path("output/items")
 output_folder.mkdir(parents=True, exist_ok=True)
 
 tree: etree._ElementTree = etree.parse(cached, None)
+
+magick = False
+if run(['magick', '-version'], capture_output=True).returncode == 0:
+    magick = True
 
 def show(element):
     'utils function for debugging'
@@ -206,6 +211,13 @@ def load_tile_image(tile: Tile) -> Image.Image:
     ))
 
 
+def hex_to_rgb(value):
+    """Return (red, green, blue) for the color given as #rrggbb."""
+    value = value.lstrip('#')
+    lv = len(value)
+    return list(int(value[i:i + lv // 3], 16) / 255 for i in range(0, lv, lv // 3))
+
+
 for source_data in data:
     item: etree._Element
     for item in source_data.findall("./item", None):
@@ -213,9 +225,20 @@ for source_data in data:
         # print(tiles[item_icon])
         item_id = item.get("id", None)
         item_icon = item.get("icon", None)
+        item_color = item.get("color", None)
+        item_colorscale = item.get("colorScale", None)
+        if item_colorscale is not None:
+            item_colorscale = float(item_colorscale)
         # TODO SUPPORT OTHER PROPERTIES (COLOR, COLORSCALE, EXTENDS, etc)
         if item_icon is None:
             continue
         icon = load_tile_image(tiles[item_icon])
         out_file = output_folder / (item_id + '.png')
         icon.save(out_file)
+        if magick is not True:
+            continue
+        if item_color is not None:
+            color_rgb = hex_to_rgb(item_color)
+            if item_colorscale is not None:
+                color_rgb = [i * item_colorscale for i in color_rgb]
+            run(['magick', out_file, '-channel', 'Red', '-evaluate', 'Multiply', str(color_rgb[0]), '-channel', 'Green', '-evaluate', 'Multiply', str(color_rgb[1]), '-channel', 'Blue', '-evaluate', 'Multiply', str(color_rgb[2]), out_file])
