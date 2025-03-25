@@ -45,8 +45,10 @@ output_folder.mkdir(parents=True, exist_ok=True)
 tree: etree._ElementTree = etree.parse(cached, None)
 
 magick = False
-if run(['magick', '-version'], capture_output=True).returncode == 0:
-    magick = True
+try: except Exception:
+    if run(['magick', '-version'], capture_output=True).returncode == 0:
+        magick = True
+
 
 def show(element):
     'utils function for debugging'
