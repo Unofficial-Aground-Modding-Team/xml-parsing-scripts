@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fanfish"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "lxml>=5.4.0",
+    "numpy>2",
+    "pillow>=11.2.1",
+]
