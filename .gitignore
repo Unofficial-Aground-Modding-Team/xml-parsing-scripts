@@ -166,3 +166,6 @@ cython_debug/
 /data
 /clean
 /output
+
+# Other
+__marimo__

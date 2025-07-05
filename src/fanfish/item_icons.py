@@ -1,12 +1,14 @@
 "Parses all Tiles and their Tilesheets, then find all icons used by items and extract them individually"
 
-from lxml import etree
-from pathlib import Path
 from dataclasses import dataclass
-from PIL import Image
+from pathlib import Path
 from subprocess import run
 
+from lxml import etree
+from PIL import Image
+
 DATA_FOLDER = Path("data")
+
 
 @dataclass
 class Frame:
@@ -18,6 +20,7 @@ class Frame:
     offsetX: int | None
     offsetY: int | None
 
+
 @dataclass
 class Tilesheet:
     id: str
@@ -27,6 +30,7 @@ class Tilesheet:
     offsetX: int
     offsetY: int
     frames: list[Frame]
+
 
 @dataclass
 class Tile:
@@ -46,27 +50,33 @@ tree: etree._ElementTree = etree.parse(cached, None)
 
 magick = False
 try:
-    if run(['magick', '-version'], capture_output=True).returncode == 0:
+    if run(["magick", "-version"], capture_output=True).returncode == 0:
         magick = True
 except Exception:
     print("ImageMagick not found")
 
 
 def show(element):
-    'utils function for debugging'
+    "utils function for debugging"
     print(etree.tostring(element, pretty_print=True).decode())  # type: ignore
 
+
 # Each element in the data list corresponds to one file's root <data> or equivalent
-data: list[etree._Element] = tree.findall('./', None)
+data: list[etree._Element] = tree.findall("./", None)
 
 # NOTE: THE OUTPUT DOES NOT INCLUDES ANYTHING INHERITED FROM EXTENDING
 
-items: list[etree._Element] = [item for root in data for item in root.findall("item", None)]
+items: list[etree._Element] = [
+    item for root in data for item in root.findall("item", None)
+]
 
 
 def _get_default(frames, frame_index, field, default):
-    'Find the `equals=` frame and grab its field, or return a default value'
-    return next((getattr(frame, field) for frame in frames if frame.frame == frame_index), default)
+    "Find the `equals=` frame and grab its field, or return a default value"
+    return next(
+        (getattr(frame, field) for frame in frames if frame.frame == frame_index),
+        default,
+    )
 
 
 _frame_defaults = {
@@ -76,8 +86,9 @@ _frame_defaults = {
     "width": None,  # "Inherited" from the <sheet>
     "height": None,
     "offsetX": None,
-    "offsetY": None,    
+    "offsetY": None,
 }
+
 
 def parse_frames(sheet: etree._Element) -> list[Frame]:
     "Parse <image> tags inside of a <sheet>. Returns an empty list if it has none."
@@ -94,7 +105,7 @@ def parse_frames(sheet: etree._Element) -> list[Frame]:
             fields[field] = int(result) if result is not None else None
         frames.append(Frame(**fields))
 
-    frames.sort(key = lambda frame: frame.frame)
+    frames.sort(key=lambda frame: frame.frame)
     return frames
 
 
@@ -121,7 +132,7 @@ def create_tilesheet(path: Path, sheet: etree._Element | None) -> Tilesheet:
             frames=parse_frames(sheet),
         )
         for frame in tilesheet.frames:
-            for field in ('width', 'height', 'offsetX', 'offsetY'):
+            for field in ("width", "height", "offsetX", "offsetY"):
                 if getattr(frame, field) is None:  # Set defaults for all Frames
                     setattr(frame, field, getattr(tilesheet, field))
         return tilesheet
@@ -135,15 +146,18 @@ for source in data:
     for sheet in source.findall("tilesheet", None):
         sheet_long_id = Path(source.get("source", None)).parent / sheet.get("id", None)
         # In some cases, the ID may differ from the actual file path, if `sheet='*.png'` is present
-        sheet_path = Path(source.get("source", None)).parent / sheet.get("sheet", sheet.get("id", None))
+        sheet_path = Path(source.get("source", None)).parent / sheet.get(
+            "sheet", sheet.get("id", None)
+        )
         tilesheets[sheet_long_id] = create_tilesheet(sheet_path, sheet)
 
 # ----------------
 
+
 def parse_source_sheet(source_path: Path, sheet_id: str) -> Path:
     "Resolve the path to a Tilesheet"
-    if '{' in sheet_id:
-        return Path(sheet_id.replace('{', '').replace('}', ''))
+    if "{" in sheet_id:
+        return Path(sheet_id.replace("{", "").replace("}", ""))
     else:
         return Path(source_path).parent / source_sheet
 
@@ -158,6 +172,7 @@ def create_tile(sheet: Tilesheet, tile: etree._Element) -> Tile:
         y=int(tile.get("y", 0)),
     )
 
+
 tiles: dict[str, Tile] = {}
 _equal_tiles: dict[str, str] = {}
 
@@ -170,7 +185,7 @@ for source in data:
             _equal_tiles[tile.get("id", None)] = eq
             continue  # Handled later
         if (source_sheet := tile.get("sheet", None)) is None:
-            print("Ignoring tile as it has no sheet", end='')
+            print("Ignoring tile as it has no sheet", end="")
             show(tile)
             continue  # Ignored
         # Load the full path, then create with default settings if it's not registered
@@ -183,12 +198,11 @@ for source in data:
 
 
 for equal_tile, source_tile in _equal_tiles.items():
-    if source_tile == 'empty':
+    if source_tile == "empty":
         continue
     tiles[equal_tile] = tiles[source_tile]
 
 del _equal_tiles
-
 
 
 def load_tile_image(tile: Tile) -> Image.Image:
@@ -207,19 +221,21 @@ def load_tile_image(tile: Tile) -> Image.Image:
     else:
         new_y, new_x = divmod(tile.x + tile.y * n_cols, n_cols)
 
-    return image.crop((
-        new_x * tilesheet.width,
-        new_y * tilesheet.height,
-        (new_x + 1) * tilesheet.width,
-        (new_y + 1) * tilesheet.height,
-    ))
+    return image.crop(
+        (
+            new_x * tilesheet.width,
+            new_y * tilesheet.height,
+            (new_x + 1) * tilesheet.width,
+            (new_y + 1) * tilesheet.height,
+        )
+    )
 
 
 def hex_to_rgb(value):
     """Return (red, green, blue) for the color given as #rrggbb."""
-    value = value.lstrip('#')
+    value = value.lstrip("#")
     lv = len(value)
-    return list(int(value[i:i + lv // 3], 16) / 255 for i in range(0, lv, lv // 3))
+    return list(int(value[i : i + lv // 3], 16) / 255 for i in range(0, lv, lv // 3))
 
 
 for source_data in data:
@@ -237,7 +253,7 @@ for source_data in data:
         if item_icon is None:
             continue
         icon = load_tile_image(tiles[item_icon])
-        out_file = output_folder / (item_id + '.png')
+        out_file = output_folder / (item_id + ".png")
         icon.save(out_file)
         if magick is not True:
             continue
@@ -245,4 +261,25 @@ for source_data in data:
             color_rgb = hex_to_rgb(item_color)
             if item_colorscale is not None:
                 color_rgb = [i * item_colorscale for i in color_rgb]
-            run(['magick', out_file, '-channel', 'Red', '-evaluate', 'Multiply', str(color_rgb[0]), '-channel', 'Green', '-evaluate', 'Multiply', str(color_rgb[1]), '-channel', 'Blue', '-evaluate', 'Multiply', str(color_rgb[2]), out_file])
+            run(
+                [
+                    "magick",
+                    out_file,
+                    "-channel",
+                    "Red",
+                    "-evaluate",
+                    "Multiply",
+                    str(color_rgb[0]),
+                    "-channel",
+                    "Green",
+                    "-evaluate",
+                    "Multiply",
+                    str(color_rgb[1]),
+                    "-channel",
+                    "Blue",
+                    "-evaluate",
+                    "Multiply",
+                    str(color_rgb[2]),
+                    out_file,
+                ]
+            )

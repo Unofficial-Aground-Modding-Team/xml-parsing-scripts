@@ -1,7 +1,8 @@
 from pathlib import Path
+
 from lxml import etree
 
-from utils.images import TileManager
+from fanfish.utils.images import TileManager
 
 DATA_FOLDER = Path("data")
 
@@ -19,11 +20,11 @@ for source, item in manager.iterate_elements(aggregated_xml, "item"):
     animation = item.get("animation", "single")
     icon = item.get("icon", None)
     if icon is None:
-        print(f"skipping {item.get("id", None)}")
+        print(f"skipping {item.get('id', None)}")
         continue
     frames, offsets = manager.get_tile_animation(icon, animation)
     formatted = manager.format_animation(frames, offsets)
-    
+
     for i, frame in enumerate(formatted):
-        file = output_folder / f'{item.get("id", None)}_{i}.png'
+        file = output_folder / f"{item.get('id', None)}_{i}.png"
         frame.save(file)

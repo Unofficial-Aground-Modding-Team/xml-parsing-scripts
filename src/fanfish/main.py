@@ -2,6 +2,7 @@
 adding the source path into the XML and wrapping around files that are included by root."""
 
 import pathlib
+
 from lxml import etree
 
 folder = pathlib.Path("clean")
@@ -20,13 +21,13 @@ parser = etree.XMLParser(
     remove_pis=False,
     strip_cdata=False,
 )
-mod_meta: dict [pathlib.Path, etree._Element]= {}
+mod_meta: dict[pathlib.Path, etree._Element] = {}
 data: dict[pathlib.Path, etree._Element] = {}
 
 for file in folder.rglob("*.xml"):
     tree: etree._ElementTree = etree.parse(file, parser)
     root: etree._Element = tree.getroot()
-    if file.name == 'mod.xml':
+    if file.name == "mod.xml":
         init = root.find("init", None)
         root.remove(init)
         mod_meta[file] = root
@@ -46,7 +47,9 @@ for file, root in data.items():
             requires_wrapper.add(included_file)
 
 
-requires_wrapper.difference_update({path for path in requires_wrapper if path.name == "music.xml"})
+requires_wrapper.difference_update(
+    {path for path in requires_wrapper if path.name == "music.xml"}
+)
 
 assert requires_wrapper.issubset(data.keys())
 
