@@ -127,7 +127,9 @@ def parse_source_sheet(source_file: Path, sheet_id: str) -> Path:
     if "{" in sheet_id:
         sheet_id = sheet_id.replace("{", "").replace("}", "")
         if sheet_id.startswith("mod:"):
-            return Path("mods") / sheet_id.removeprefix("mod:").replace("full_version", "full")
+            return Path("mods") / sheet_id.removeprefix("mod:").replace(
+                "full_version", "full"
+            )
         else:
             return Path(sheet_id)
     else:
@@ -153,8 +155,12 @@ def parse_sheet_image_frames(
             ),
             DEFAULT_XML_SHEET_IMAGE,
         )
-        values["width"] = frame.get("width", base_frame.width if base_frame.width != -1 else tilesheet.width)
-        values["height"] = frame.get("height", base_frame.height if base_frame.height != -1 else tilesheet.height)
+        values["width"] = frame.get(
+            "width", base_frame.width if base_frame.width != -1 else tilesheet.width
+        )
+        values["height"] = frame.get(
+            "height", base_frame.height if base_frame.height != -1 else tilesheet.height
+        )
         simple_fields = ("x", "y", "offsetX", "offsetY")
         for field in simple_fields:
             value = frame.get(field, getattr(base_frame, field))
@@ -483,6 +489,7 @@ TODO......
         """
 
 if __name__ == "__main__":
+
     def main():
         input_file = "clean/aggregated.xml"
         # data_folder = Path("data")

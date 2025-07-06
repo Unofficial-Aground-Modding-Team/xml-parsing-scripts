@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from pydantic import BaseModel, Field
 import pydantic
+from pydantic import BaseModel, Field
 
 from fanfish.utils.common import Color
 
@@ -20,7 +20,9 @@ class Tile(BaseModel):
 
 
 class ImageFrame(BaseModel):
-    index: int  = Field(validation_alias=pydantic.AliasChoices("index", "frame"))  # <tilesheet <image frame=''
+    index: int = Field(
+        validation_alias=pydantic.AliasChoices("index", "frame")
+    )  # <tilesheet <image frame=''
     x: int  # defaults to 0
     y: int  # defaults to 0
     width: int  # defaults to same as sheet

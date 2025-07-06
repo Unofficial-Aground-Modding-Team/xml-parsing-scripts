@@ -23,9 +23,9 @@ class Color:
         if color_string.startswith("#"):
             color_string = color_string.strip("#")
         if len(color_string) == 3:
-            red, blue, green = (int(color_string[i], 16) * 17 for i in range(3))
+            red, green, blue = (int(color_string[i], 16) * 17 for i in range(3))
         elif len(color_string) == 6:
-            red, blue, green = (
+            red, green, blue = (
                 int(color_string[i : i + 2], 16) for i in range(0, 6, 2)
             )
         else:
@@ -39,17 +39,29 @@ class Color:
     def __mul__(self, other) -> "Color":
         if isinstance(other, Color):
             return Color(
-                red = self.red * other.red,
-                green = self.green * other.green,
-                blue = self.blue * other.blue,
+                red=self.red * other.red,
+                green=self.green * other.green,
+                blue=self.blue * other.blue,
             )
         elif isinstance(other, float):
             return Color(
-                red = self.red * other,
-                green = self.green * other,
-                blue = self.blue * other,
+                red=self.red * other,
+                green=self.green * other,
+                blue=self.blue * other,
             )
         return NotImplemented
+
+    def __eq__(self, other) -> bool:
+        if isinstance(other, Color):
+            return (
+                self.red == other.red
+                and self.green == other.green
+                and self.blue == other.blue
+            )
+        return NotImplemented
+
+    def __hash__(self):
+        return hash((self.red, self.green, self.blue))
 
 
 # DEFAULT_COLOR = Color(red=1.0, green=1.0, blue=1.0)

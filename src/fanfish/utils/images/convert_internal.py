@@ -1,7 +1,9 @@
 import copy
 import math
 from pathlib import Path
+
 from PIL import Image
+
 from fanfish.utils.models import (
     AbstractAnimation,
     AnimationFrame,
@@ -22,6 +24,7 @@ DATA_FOLDER = Path("data")
 tilesheets: dict[str, TileSheet] = {}
 tiles: dict[str, Tile] = {}
 animations: dict[str, AnimationSequence] = {}
+
 
 def convert_tilesheet(tilesheet: XmlTileSheet) -> TileSheet:
     path = Path(tilesheet.sheet)
@@ -50,17 +53,31 @@ def convert_tilesheet(tilesheet: XmlTileSheet) -> TileSheet:
                 )
                 frames.append(img_frame)
     return TileSheet(id=tilesheet.id, sheet_file=path, frames=frames)
-    
+
 
 def convert_tile(tile: XmlTile) -> Tile:
     parts = []
-    parts.append(TilePart(sheet_id=tile.sheet.id, x=tile.x, y=tile.y, offsetX=tile.offsetX, offsetY=tile.offsetY))
+    parts.append(
+        TilePart(
+            sheet_id=tile.sheet.id,
+            x=tile.x,
+            y=tile.y,
+            offsetX=tile.offsetX,
+            offsetY=tile.offsetY,
+        )
+    )
     for subtile in tile.subtiles:
-        parts.append(TilePart(
-            sheet_id=subtile.sheet.id,
-            x=subtile.x, y=subtile.y, offsetX=subtile.offsetX, offsetY=subtile.offsetY,
-        ))
+        parts.append(
+            TilePart(
+                sheet_id=subtile.sheet.id,
+                x=subtile.x,
+                y=subtile.y,
+                offsetX=subtile.offsetX,
+                offsetY=subtile.offsetY,
+            )
+        )
     return Tile(id=tile.id, subtiles=parts)
+
 
 def convert_animation(animation: XmlAnimation) -> AnimationSequence:
     abs_animations: list[AbstractAnimation] = []
@@ -144,16 +161,18 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
     # ---
     return AnimationSequence(id=animation.id, animations=abs_animations)
 
+
 if __name__ == "__main__":
     from lxml import etree
+
     from fanfish.utils.images.parse_xml import (
-        parse_source_sheet,
-        load_tilesheet,
-        load_tile,
         load_animation,
+        load_tile,
+        load_tilesheet,
+        parse_source_sheet,
+        xml_animations,
         xml_tile_sheets,
         xml_tiles,
-        xml_animations,
     )
 
     def prepare():
@@ -194,7 +213,6 @@ if __name__ == "__main__":
         for source_file, element in _agg_animations:
             load_animation(element)
 
-
     def main():
         for tilesheet in xml_tile_sheets.values():
             converted = convert_tilesheet(tilesheet)
@@ -212,7 +230,10 @@ if __name__ == "__main__":
                 animation = xml_animations[animation_id]
                 if (eq := animation.equals) is not None and eq not in _solved:
                     continue
-                if any((an := dependency.animation) is not None and an not in _solved for dependency in animation.appends):
+                if any(
+                    (an := dependency.animation) is not None and an not in _solved
+                    for dependency in animation.appends
+                ):
                     continue
 
                 converted = convert_animation(animation)
@@ -223,14 +244,28 @@ if __name__ == "__main__":
             raise RuntimeError("Could not resolve animations equals=")
 
         print("tilesheets", len(tilesheets))
-        print("tilesheets.frames", sum(len(sheet.frames) for sheet in tilesheets.values()))
+        print(
+            "tilesheets.frames", sum(len(sheet.frames) for sheet in tilesheets.values())
+        )
 
         print("tiles", len(tiles))
         print("tiles.subtiles", sum(len(tile.subtiles) for tile in tiles.values()))
 
         print("animations", len(animations))
-        print("animations.animations", sum(len(animation.animations) for animation in animations.values()))
-        print("animations.animations.frames", sum((len(abs.frames) for animation in animations.values() for abs in animation.animations)))
+        print(
+            "animations.animations",
+            sum(len(animation.animations) for animation in animations.values()),
+        )
+        print(
+            "animations.animations.frames",
+            sum(
+                (
+                    len(abs.frames)
+                    for animation in animations.values()
+                    for abs in animation.animations
+                )
+            ),
+        )
 
     prepare()
     main()

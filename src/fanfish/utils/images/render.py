@@ -1,18 +1,19 @@
 import math
 from pathlib import Path
-from PIL import Image
+
+import numpy as np
 import pydantic
+from PIL import Image
+
+from fanfish.utils.common import DEFAULT_COLOR, Color
 from fanfish.utils.models import (
-    AbstractAnimation,
-    AnimationFrame,
     AnimationSequence,
-    ImageFrame,
     Tile,
-    TilePart,
     TileSheet,
 )
 
 DATA_FOLDER = Path("data")
+
 
 class DataContainer(pydantic.BaseModel):
     tilesheets: dict[str, TileSheet]
@@ -25,12 +26,12 @@ class Stage:
         self,
         data: DataContainer,
     ):
-        self.image = Image.new("RGB", (512, 512), (128, 128, 128))
+        self.image = Image.new("RGBA", (512, 512), (255, 255, 255, 0))
         self.tilesheets = data.tilesheets
         self.tiles = data.tiles
         self.animations = data.animations
 
-    def render(self, tile_id: str, animation_id: str, index: int):
+    def render(self, tile_id: str, animation_id: str, index: int, extra_offset_x: int = 0, extra_offset_y: int = 0, extra_color: Color = DEFAULT_COLOR):
         animation = self.animations[animation_id]
         for anim in animation.animations:
             frame = anim.frames[index]
@@ -43,8 +44,7 @@ class Stage:
                 cols = math.ceil(img_file.width / sheet.frames[0].width)
                 combined_x = subtile.x + frame.x + cols * (subtile.y + frame.y)
                 sheet_image = sheet.frames[combined_x]
-                # assert sheet_image.index == combined_x
-                # assert divmod(combined_x, cols) == (sheet_image.y, sheet_image.x)
+
                 cropped = img_file.crop(
                     (
                         # left, upper, right, and lower
@@ -54,13 +54,28 @@ class Stage:
                         sheet_image.y + sheet_image.height,
                     )
                 )
+                if (tint := (frame.color * extra_color)) != DEFAULT_COLOR:
+                    _arr = np.array(cropped).astype(np.float64)
+                    _arr[:, :, 0] *= tint.red
+                    _arr[:, :, 1] *= tint.green
+                    _arr[:, :, 2] *= tint.blue
+                    # <Messing around a bit>
+                    # L = _arr[:, :, :3] @ [0.2126, 0.7152, 0.0722]  # luminance
+                    # L *= 100 / L.mean()
+                    # _arr[:, :, 0] = L * tint.red
+                    # _arr[:, :, 1] = L * tint.green
+                    # _arr[:, :, 2] = L * tint.blue
+                    # </Messing around a bit>
+                    _arr = np.round(np.minimum(_arr, 255)).astype(np.uint8)
+                    cropped = Image.fromarray(_arr)
+
                 combined_offset_X = subtile.offsetX + frame.offsetX
                 combined_offset_Y = subtile.offsetY + frame.offsetY
                 self.image.paste(
                     cropped,
                     (
-                        255 + int(combined_offset_X * sheet_image.width),
-                        255 + int(combined_offset_Y * sheet_image.height),
+                        255 + int(combined_offset_X * sheet_image.width) + extra_offset_x,
+                        255 + int(combined_offset_Y * sheet_image.height) + extra_offset_y,
                     ),
                 )
 
@@ -69,23 +84,24 @@ if __name__ == "__main__":
     from lxml import etree
 
     def create_data():
+        from fanfish.utils.images.convert_internal import (
+            animations,
+            convert_animation,
+            convert_tile,
+            convert_tilesheet,
+            tiles,
+            tilesheets,
+        )
         from fanfish.utils.images.parse_xml import (
-            parse_source_sheet,
-            load_tilesheet,
-            load_tile,
             load_animation,
+            load_tile,
+            load_tilesheet,
+            parse_source_sheet,
+            xml_animations,
             xml_tile_sheets,
             xml_tiles,
-            xml_animations,
         )
-        from fanfish.utils.images.convert_internal import (
-            convert_tilesheet,
-            convert_tile,
-            convert_animation,
-            tilesheets,
-            tiles,
-            animations,
-        )
+
         input_file = "clean/aggregated.xml"
 
         aggregated_xml = etree.parse(input_file).getroot()
@@ -152,16 +168,33 @@ if __name__ == "__main__":
         if _missing:
             raise RuntimeError("Could not resolve animations equals=")
         data = DataContainer(tilesheets=tilesheets, tiles=tiles, animations=animations)
-        with open("clean/parsed.json", 'w') as file:
+        with open("clean/parsed.json", "w") as file:
             file.write(data.model_dump_json())
 
     def main():
-        with open("clean/parsed.json", 'r') as file:
+        with open("clean/parsed.json", "r") as file:
             data = DataContainer.model_validate_json(file.read())
 
         stage = Stage(data)
-        stage.render("young_dragon", "young_dragon.fly", 0)
+        # color = DEFAULT_COLOR
+        color = Color.parse_color("33f", 4)
+        for i in range(3):
+            for j in range(3):
+                stage.render("young_dragon", "young_dragon.fly", index=i*3+j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color)
+        stage.render("young_dragon", "young_dragon.fly", index=9, extra_offset_x=0, extra_offset_y=3*48, extra_color=color)
+        # colors = [
+        #     Color.parse_color("#E40303", 1.0),
+        #     Color.parse_color("#FF8C00", 1.0),
+        #     Color.parse_color("#FFED00", 1.0),
+        #     Color.parse_color("#008026", 1.0),
+        #     Color.parse_color("#004CFF", 1.0),
+        #     Color.parse_color("#732982", 1.0),
+        # ]
+        # for i, color in enumerate(colors, -3):
+        #     for j in range(-5, 5):
+        #         extra_color_scale = 0.75 + (((i + j) % 5) / 10) # 0.75 ~ 1.25
+        #         stage.render("young_dragon", "young_dragon.fly", index=j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color * extra_color_scale)
         stage.image.save("tmp.png")
 
-    create_data()
+    # create_data()
     main()
