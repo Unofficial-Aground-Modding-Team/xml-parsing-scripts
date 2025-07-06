@@ -36,6 +36,21 @@ class Color:
             blue / 0xFF * color_scale,
         )
 
+    def __mul__(self, other) -> "Color":
+        if isinstance(other, Color):
+            return Color(
+                red = self.red * other.red,
+                green = self.green * other.green,
+                blue = self.blue * other.blue,
+            )
+        elif isinstance(other, float):
+            return Color(
+                red = self.red * other,
+                green = self.green * other,
+                blue = self.blue * other,
+            )
+        return NotImplemented
+
 
 # DEFAULT_COLOR = Color(red=1.0, green=1.0, blue=1.0)
 # DEFAULT_COLOR = Color.parse_color("#ffffff", 1.0)

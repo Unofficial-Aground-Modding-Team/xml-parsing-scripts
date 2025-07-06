@@ -1,10 +1,8 @@
 "Utility classes for parsing tile animations"
 
-from dataclasses import dataclass
 from pathlib import Path
 
 from lxml import etree
-from PIL import Image
 
 from fanfish.utils.common import DEFAULT_COLOR, Color
 from fanfish.utils.models import (
@@ -127,7 +125,11 @@ xml_animations: dict[str, XmlAnimation] = {}
 def parse_source_sheet(source_file: Path, sheet_id: str) -> Path:
     "Resolve the path to a Tilesheet"
     if "{" in sheet_id:
-        return Path(sheet_id.replace("{", "").replace("}", ""))
+        sheet_id = sheet_id.replace("{", "").replace("}", "")
+        if sheet_id.startswith("mod:"):
+            return Path("mods") / sheet_id.removeprefix("mod:").replace("full_version", "full")
+        else:
+            return Path(sheet_id)
     else:
         return Path(source_file).parent / sheet_id
 
@@ -179,11 +181,16 @@ def load_tilesheet(sheet_id: Path, sheet: etree._Element | None) -> XmlTileSheet
         )
     else:  # Custom <sheet> definition
         # If it has a `sheet` tag, use that for the actual image instead of the `id`
+        if (image_file := sheet.get("sheet")) is not None:
+            path = sheet_id.with_name(image_file)
+        else:
+            path = sheet_id
+
         tilesheet = XmlTileSheet(
             id=str(sheet_id),
             name=sheet.get("name", None),
             extends=sheet.get("extends", None),
-            sheet=sheet.get("sheet", str(sheet_id)),
+            sheet=str(path),
             width=int(sheet.get("width", 16)),
             height=int(sheet.get("height", 16)),
             offsetX=int(sheet.get("offsetX", 0)),
@@ -206,7 +213,7 @@ def parse_sub_tiles(source_file: Path, root: etree._Element) -> list[XmlSubTile]
         _sheet = subtile.get("sheet")
         assert _sheet is not None
         sheet_id = parse_source_sheet(source_file, _sheet)
-        if sheet_id in xml_tile_sheets:
+        if str(sheet_id) in xml_tile_sheets:
             sheet = xml_tile_sheets[str(sheet_id)]
         else:
             assert xml_tile_sheets, (
@@ -474,9 +481,8 @@ TODO......
         return manager
 
         """
-if __name__ == "__main__":
-    from lxml import etree
 
+if __name__ == "__main__":
     def main():
         input_file = "clean/aggregated.xml"
         # data_folder = Path("data")

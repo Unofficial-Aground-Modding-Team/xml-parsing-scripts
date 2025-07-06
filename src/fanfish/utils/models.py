@@ -1,6 +1,7 @@
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+import pydantic
 
 from fanfish.utils.common import Color
 
@@ -19,7 +20,7 @@ class Tile(BaseModel):
 
 
 class ImageFrame(BaseModel):
-    index: int  # <tilesheet <image frame=''
+    index: int  = Field(validation_alias=pydantic.AliasChoices("index", "frame"))  # <tilesheet <image frame=''
     x: int  # defaults to 0
     y: int  # defaults to 0
     width: int  # defaults to same as sheet
@@ -39,9 +40,10 @@ class AnimationFrame(BaseModel):
     visible: bool  # defaults to False, do not render during this frame
     x: int  # defaults to inherit
     y: int  # defaults to inherit
-    offsetX: int  # defaults to 0
-    offsetY: int  # defaults to 0
+    offsetX: float  # defaults to 0
+    offsetY: float  # defaults to 0
     color: Color
+    glow: bool
 
 
 class AbstractAnimation(BaseModel):
