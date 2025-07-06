@@ -13,10 +13,6 @@ from fanfish.utils.models import (
 )
 from fanfish.utils.xml_models import (
     XmlAnimation,
-    XmlAnimationFrame,
-    XmlAppendedAnimation,
-    XmlSheetImage,
-    XmlSubTile,
     XmlTile,
     XmlTileSheet,
 )
