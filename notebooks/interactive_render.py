@@ -21,16 +21,19 @@ def _():
 
 @app.cell
 def _(mo):
-    width_slider = mo.ui.slider(64, 1024, 16, value=256, include_input=True)
-    height_slider = mo.ui.slider(64, 1024, 16, value=256, include_input=True)
+    width_slider = mo.ui.slider(64, 1024, 16, value=128, include_input=True)
+    height_slider = mo.ui.slider(64, 1024, 16, value=128, include_input=True)
     fps_slider = mo.ui.slider(5, 60, 1, value=15, include_input=True)
+    scale_slider = mo.ui.slider(1, 16, value=2, include_input=True)
     mo.vstack(
-        [mo.hstack(["Width:", width_slider], justify="start"),
-         mo.hstack(["Height:", height_slider], justify="start"),
-         mo.hstack(["FPS:", fps_slider], justify="start"),
+        [
+            mo.hstack(["Width:", width_slider], justify="start"),
+            mo.hstack(["Height:", height_slider], justify="start"),
+            mo.hstack(["FPS:", fps_slider], justify="start"),
+            mo.hstack(["Scale:", scale_slider], justify="start"),
         ]
     )
-    return fps_slider, height_slider, width_slider
+    return fps_slider, height_slider, scale_slider, width_slider
 
 
 @app.cell
@@ -97,13 +100,16 @@ def _(animation_selection, tile_selection):
 
 
 @app.cell
-def _(animation_id, data):
-    data.animations[animation_id]
-    return
-
-
-@app.cell
-def _(animation_id, background, data, fps_slider, mo, stage, tile_id):
+def _(
+    animation_id,
+    background,
+    data,
+    fps_slider,
+    mo,
+    scale_slider,
+    stage,
+    tile_id,
+):
     gif = []
     mo.stop(tile_id is None or animation_id is None)
     _anim = data.animations[animation_id]
@@ -114,7 +120,10 @@ def _(animation_id, background, data, fps_slider, mo, stage, tile_id):
         gif.append(stage.image)
 
     gif[0].save("tmp.gif", save_all=True, append_images=gif[1:], loop=0, duration=1000 / fps_slider.value)
-    mo.image(open("tmp.gif", "rb"))
+    mo.image(
+        open("tmp.gif", "rb"),
+        style={"image-rendering": "crisp-edges", "scale": scale_slider.value, "transform-origin": "top left"},
+    )
     return
 
 
