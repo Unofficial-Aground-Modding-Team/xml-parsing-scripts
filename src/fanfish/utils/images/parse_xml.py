@@ -145,16 +145,16 @@ def parse_sheet_image_frames(
         values = {}
         values["frame"] = frame.get("frame")
         values["equals"] = frame.get("equals")
-        values["width"] = frame.get("width", tilesheet.width)
-        values["height"] = frame.get("height", tilesheet.height)
         base_frame = next(
             (
                 existing
                 for existing in frames
-                if existing.frame == frame.get("equals", None)
+                if existing.frame == int(frame.get("equals", -1))
             ),
             DEFAULT_XML_SHEET_IMAGE,
         )
+        values["width"] = frame.get("width", base_frame.width if base_frame.width != -1 else tilesheet.width)
+        values["height"] = frame.get("height", base_frame.height if base_frame.height != -1 else tilesheet.height)
         simple_fields = ("x", "y", "offsetX", "offsetY")
         for field in simple_fields:
             value = frame.get(field, getattr(base_frame, field))

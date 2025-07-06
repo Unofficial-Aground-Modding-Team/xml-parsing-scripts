@@ -41,8 +41,8 @@ def convert_tilesheet(tilesheet: XmlTileSheet) -> TileSheet:
                 index = y * cols + x
                 img_frame = ImageFrame(
                     index=index,
-                    x=x,
-                    y=y,
+                    x=x * tilesheet.width,
+                    y=y * tilesheet.height,
                     width=tilesheet.width,
                     height=tilesheet.height,
                     offsetX=tilesheet.offsetX,

@@ -1,6 +1,7 @@
 import math
 from pathlib import Path
 from PIL import Image
+import pydantic
 from fanfish.utils.models import (
     AbstractAnimation,
     AnimationFrame,
@@ -13,18 +14,21 @@ from fanfish.utils.models import (
 
 DATA_FOLDER = Path("data")
 
+class DataContainer(pydantic.BaseModel):
+    tilesheets: dict[str, TileSheet]
+    tiles: dict[str, Tile]
+    animations: dict[str, AnimationSequence]
+
 
 class Stage:
     def __init__(
         self,
-        tilesheets: dict[str, TileSheet],
-        tiles: dict[str, Tile],
-        animations: dict[str, AnimationSequence],
+        data: DataContainer,
     ):
         self.image = Image.new("RGB", (512, 512), (128, 128, 128))
-        self.tilesheets = tilesheets
-        self.tiles = tiles
-        self.animations = animations
+        self.tilesheets = data.tilesheets
+        self.tiles = data.tiles
+        self.animations = data.animations
 
     def render(self, tile_id: str, animation_id: str, index: int):
         animation = self.animations[animation_id]
@@ -34,7 +38,7 @@ class Stage:
                 continue
             tile = self.tiles[anim.overwrite_tile_id or tile_id]
             for subtile in tile.subtiles:
-                sheet = tilesheets[subtile.sheet_id]
+                sheet = self.tilesheets[subtile.sheet_id]
                 img_file = Image.open(DATA_FOLDER / sheet.sheet_file)
                 cols = math.ceil(img_file.width / sheet.frames[0].width)
                 combined_x = subtile.x + frame.x + cols * (subtile.y + frame.y)
@@ -44,10 +48,10 @@ class Stage:
                 cropped = img_file.crop(
                     (
                         # left, upper, right, and lower
-                        sheet_image.x * sheet_image.width,
-                        sheet_image.y * sheet_image.height,
-                        (sheet_image.x + 1) * sheet_image.width,
-                        (sheet_image.y + 1) * sheet_image.height,
+                        sheet_image.x,
+                        sheet_image.y,
+                        sheet_image.x + sheet_image.width,
+                        sheet_image.y + sheet_image.height,
                     )
                 )
                 combined_offset_X = subtile.offsetX + frame.offsetX
@@ -63,25 +67,25 @@ class Stage:
 
 if __name__ == "__main__":
     from lxml import etree
-    from fanfish.utils.images.parse_xml import (
-        parse_source_sheet,
-        load_tilesheet,
-        load_tile,
-        load_animation,
-        xml_tile_sheets,
-        xml_tiles,
-        xml_animations,
-    )
-    from fanfish.utils.images.convert_internal import (
-        convert_tilesheet,
-        convert_tile,
-        convert_animation,
-        tilesheets,
-        tiles,
-        animations,
-    )
 
-    def prepare():
+    def create_data():
+        from fanfish.utils.images.parse_xml import (
+            parse_source_sheet,
+            load_tilesheet,
+            load_tile,
+            load_animation,
+            xml_tile_sheets,
+            xml_tiles,
+            xml_animations,
+        )
+        from fanfish.utils.images.convert_internal import (
+            convert_tilesheet,
+            convert_tile,
+            convert_animation,
+            tilesheets,
+            tiles,
+            animations,
+        )
         input_file = "clean/aggregated.xml"
 
         aggregated_xml = etree.parse(input_file).getroot()
@@ -119,7 +123,6 @@ if __name__ == "__main__":
         for source_file, element in _agg_animations:
             load_animation(element)
 
-    def main():
         for tilesheet in xml_tile_sheets.values():
             converted = convert_tilesheet(tilesheet)
             tilesheets[converted.id] = converted
@@ -148,10 +151,17 @@ if __name__ == "__main__":
             _missing -= _solved
         if _missing:
             raise RuntimeError("Could not resolve animations equals=")
+        data = DataContainer(tilesheets=tilesheets, tiles=tiles, animations=animations)
+        with open("clean/parsed.json", 'w') as file:
+            file.write(data.model_dump_json())
 
-        stage = Stage(tilesheets=tilesheets, tiles=tiles, animations=animations)
+    def main():
+        with open("clean/parsed.json", 'r') as file:
+            data = DataContainer.model_validate_json(file.read())
+
+        stage = Stage(data)
         stage.render("young_dragon", "young_dragon.fly", 0)
         stage.image.save("tmp.png")
 
-    prepare()
+    create_data()
     main()
