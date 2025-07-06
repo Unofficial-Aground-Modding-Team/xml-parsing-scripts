@@ -1,3 +1,4 @@
+# type: ignore
 "Extracts all <item> definitions, selecting a subset of their properties and relationships with other types of data"
 
 import json

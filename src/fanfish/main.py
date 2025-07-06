@@ -25,13 +25,15 @@ mod_meta: dict[pathlib.Path, etree._Element] = {}
 data: dict[pathlib.Path, etree._Element] = {}
 
 for file in folder.rglob("*.xml"):
+    if file.parent == folder:
+        continue
     tree: etree._ElementTree = etree.parse(file, parser)
     root: etree._Element = tree.getroot()
     if file.name == "mod.xml":
         init = root.find("init", None)
-        root.remove(init)
+        root.remove(init)  # type: ignore
         mod_meta[file] = root
-        data[file] = init
+        data[file] = init  # type: ignore
     else:
         data[file] = root
 
@@ -41,9 +43,9 @@ requires_wrapper: set[pathlib.Path] = set()
 
 for file, root in data.items():
     include: etree._Element
-    for include in root.findall("include", None):
+    for include in root.xpath("//include"):
         if include.get("includeRoot", "false") == "true":
-            included_file = file.parent / include.get("id", None)
+            included_file = file.parent / include.get("id")  # type: ignore
             requires_wrapper.add(included_file)
 
 
@@ -54,7 +56,7 @@ requires_wrapper.difference_update(
 assert requires_wrapper.issubset(data.keys())
 
 for path in requires_wrapper:
-    wrapper: etree._Element = etree.Element("data", None, None)
+    wrapper: etree._Element = etree.Element("wrapper", None, None)
     wrapper.append(data[path])
     data[path] = wrapper
 
@@ -68,6 +70,8 @@ for path, root in mod_meta.items():
 aggregated_data: etree._Element = etree.Element("xml", None, None)
 for path, root in data.items():
     root.set("source", path.relative_to(folder).as_posix())
+    root.set("original_tag", root.tag)
+    root.tag = "xmlfile"
     aggregated_data.append(root)
 
 final_tree_mods: etree._ElementTree = aggregated_mods.getroottree()
