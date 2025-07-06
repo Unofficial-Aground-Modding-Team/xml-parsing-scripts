@@ -17,3 +17,20 @@ Run `main.py` to create the aggregated file
 # Data types
 
 Run `items.py`
+
+# Notebook
+
+```sh
+# (install uv from https://docs.astral.sh/uv/)
+uv sync --group notebook
+# Copy the Aground/data folder from your Steam Library or Itch.io download over to this repository's folder
+# (manually)
+# Scripts to clean and prepare the data:
+uv run src/fanfish/clean.py
+uv run src/fanfish/main.py
+uv run src/fanfish/utils/images/render.py
+# Running the Notebook ('app mode', as in without showing the code):
+uv run marimo run notebooks/interactive_render.py
+# Editing the Notebook:
+uv run marimo edit notebooks/interactive_render.py
+```

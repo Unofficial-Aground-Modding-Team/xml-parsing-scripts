@@ -5,15 +5,6 @@ from pathlib import Path
 from lxml import etree
 
 from fanfish.utils.common import DEFAULT_COLOR, Color
-from fanfish.utils.models import (
-    AbstractAnimation,
-    AnimationFrame,
-    AnimationSequence,
-    ImageFrame,
-    Tile,
-    TilePart,
-    TileSheet,
-)
 from fanfish.utils.xml_models import (
     XmlAnimation,
     XmlAnimationFrame,
