@@ -80,6 +80,9 @@ def convert_tile(tile: XmlTile) -> Tile:
 
 
 def convert_animation(animation: XmlAnimation) -> AnimationSequence:
+    if animation.equals:
+        return AnimationSequence(id=animation.id, animations=animations[animation.equals].animations)
+
     abs_animations: list[AbstractAnimation] = []
     main_frames: list[AnimationFrame] = []
     for count in range(animation.count):
@@ -97,9 +100,6 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
             del frame
         del count
 
-    for _ in range(animation.shift):
-        for _ in range(animation.length):
-            main_frames.append(main_frames.pop(0))
     # TODO FIGURE OUT HOW repeat WORKS
 
     for base_frame in animation.frames:
@@ -128,8 +128,13 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
         del base_frame
         del extra
 
+    for _ in range(animation.shift):
+        for _ in range(animation.length):
+            main_frames.append(main_frames.pop(0))
+
     if animation.reverse:
         main_frames.reverse()
+
     main_sequence = AbstractAnimation(
         overwrite_tile_id=animation.tile,
         rotate=animation.rotate,

@@ -176,5 +176,5 @@ if __name__ == "__main__":
         stage.render("young_dragon", "young_dragon.fly", index=9, extra_offset_x=0, extra_offset_y=3*48, extra_color=color)
         stage.image.save("tmp.png")
 
-    # create_data()
+    create_data()
     main()
