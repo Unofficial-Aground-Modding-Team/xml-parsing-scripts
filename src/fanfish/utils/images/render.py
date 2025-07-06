@@ -70,8 +70,8 @@ class Stage:
                 self.image.paste(
                     cropped,
                     (
-                        ((self.image.width - sheet_image.width) // 2) + int(combined_offset_X * sheet_image.width) + extra_offset_x,
-                        ((self.image.height - sheet_image.height) // 2) + int(combined_offset_Y * sheet_image.height) + extra_offset_y,
+                        ((self.image.width - sheet_image.width) // 2) + int(combined_offset_X) + extra_offset_x,
+                        ((self.image.height - sheet_image.height) // 2) + int(combined_offset_Y) + extra_offset_y,
                     ),
                     mask=cropped,
                 )
