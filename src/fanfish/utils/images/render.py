@@ -56,16 +56,18 @@ class Stage:
                 )
                 if (tint := (frame.color * extra_color)) != DEFAULT_COLOR:
                     _arr = np.array(cropped).astype(np.float64)
-                    _arr[:, :, 0] *= tint.red
-                    _arr[:, :, 1] *= tint.green
-                    _arr[:, :, 2] *= tint.blue
-                    # <Messing around a bit>
-                    # L = _arr[:, :, :3] @ [0.2126, 0.7152, 0.0722]  # luminance
-                    # L *= 100 / L.mean()
-                    # _arr[:, :, 0] = L * tint.red
-                    # _arr[:, :, 1] = L * tint.green
-                    # _arr[:, :, 2] = L * tint.blue
-                    # </Messing around a bit>
+                    # _arr[:, :, 0] *= tint.red
+                    # _arr[:, :, 1] *= tint.green
+                    # _arr[:, :, 2] *= tint.blue
+                    # <CUSTOM LOGIC>
+                    # Modify the Luminance, unlike how color multipliers work in Aground, 
+                    # to make everything have more or less the same brightness
+                    L = _arr[:, :, :3] @ [0.2126, 0.7152, 0.0722]  # luminance
+                    L *= 100 / L.mean()
+                    _arr[:, :, 0] = L * tint.red
+                    _arr[:, :, 1] = L * tint.green
+                    _arr[:, :, 2] = L * tint.blue
+                    # </CUSTOM LOGIC>
                     _arr = np.round(np.minimum(_arr, 255)).astype(np.uint8)
                     cropped = Image.fromarray(_arr)
 
@@ -176,24 +178,18 @@ if __name__ == "__main__":
             data = DataContainer.model_validate_json(file.read())
 
         stage = Stage(data)
-        # color = DEFAULT_COLOR
-        color = Color.parse_color("33f", 4)
-        for i in range(3):
-            for j in range(3):
-                stage.render("young_dragon", "young_dragon.fly", index=i*3+j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color)
-        stage.render("young_dragon", "young_dragon.fly", index=9, extra_offset_x=0, extra_offset_y=3*48, extra_color=color)
-        # colors = [
-        #     Color.parse_color("#E40303", 1.0),
-        #     Color.parse_color("#FF8C00", 1.0),
-        #     Color.parse_color("#FFED00", 1.0),
-        #     Color.parse_color("#008026", 1.0),
-        #     Color.parse_color("#004CFF", 1.0),
-        #     Color.parse_color("#732982", 1.0),
-        # ]
-        # for i, color in enumerate(colors, -3):
-        #     for j in range(-5, 5):
-        #         extra_color_scale = 0.75 + (((i + j) % 5) / 10) # 0.75 ~ 1.25
-        #         stage.render("young_dragon", "young_dragon.fly", index=j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color * extra_color_scale)
+        colors = [
+            Color.parse_color("#E40303", 1.0),
+            Color.parse_color("#FF8C00", 1.0),
+            Color.parse_color("#FFED00", 1.0),
+            Color.parse_color("#008026", 1.0),
+            Color.parse_color("#004CFF", 1.0),
+            Color.parse_color("#732982", 1.0),
+        ]
+        for i, color in enumerate(colors, -3):
+            for j in range(-5, 5):
+                extra_color_scale = 0.75 + (((i + j) % 5) / 10) # 0.75 ~ 1.25
+                stage.render("young_dragon", "young_dragon.fly", index=j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color * extra_color_scale)
         stage.image.save("tmp.png")
 
     # create_data()
