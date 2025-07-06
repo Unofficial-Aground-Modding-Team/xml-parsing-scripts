@@ -24,9 +24,11 @@ class DataContainer(pydantic.BaseModel):
 class Stage:
     def __init__(
         self,
+        width: int,
+        height: int,
         data: DataContainer,
     ):
-        self.image = Image.new("RGBA", (512, 512), (255, 255, 255, 0))
+        self.image = Image.new("RGBA", (width, height), (255, 255, 255, 0))
         self.tilesheets = data.tilesheets
         self.tiles = data.tiles
         self.animations = data.animations
@@ -34,7 +36,7 @@ class Stage:
     def render(self, tile_id: str, animation_id: str, index: int, extra_offset_x: int = 0, extra_offset_y: int = 0, extra_color: Color = DEFAULT_COLOR):
         animation = self.animations[animation_id]
         for anim in animation.animations:
-            frame = anim.frames[index]
+            frame = anim.frames[index % len(anim.frames)]
             if not frame.visible:
                 continue
             tile = self.tiles[anim.overwrite_tile_id or tile_id]
@@ -59,24 +61,19 @@ class Stage:
                     _arr[:, :, 0] *= tint.red
                     _arr[:, :, 1] *= tint.green
                     _arr[:, :, 2] *= tint.blue
-                    # <Messing around a bit>
-                    # L = _arr[:, :, :3] @ [0.2126, 0.7152, 0.0722]  # luminance
-                    # L *= 100 / L.mean()
-                    # _arr[:, :, 0] = L * tint.red
-                    # _arr[:, :, 1] = L * tint.green
-                    # _arr[:, :, 2] = L * tint.blue
-                    # </Messing around a bit>
                     _arr = np.round(np.minimum(_arr, 255)).astype(np.uint8)
                     cropped = Image.fromarray(_arr)
 
+                # TODO DOUBLE CHECK OFFSET MATH
                 combined_offset_X = subtile.offsetX + frame.offsetX
                 combined_offset_Y = subtile.offsetY + frame.offsetY
                 self.image.paste(
                     cropped,
                     (
-                        255 + int(combined_offset_X * sheet_image.width) + extra_offset_x,
-                        255 + int(combined_offset_Y * sheet_image.height) + extra_offset_y,
+                        ((self.image.width - sheet_image.width) // 2) + int(combined_offset_X * sheet_image.width) + extra_offset_x,
+                        ((self.image.height - sheet_image.height) // 2) + int(combined_offset_Y * sheet_image.height) + extra_offset_y,
                     ),
+                    mask=cropped,
                 )
 
 
@@ -121,11 +118,6 @@ if __name__ == "__main__":
             ]:
                 for element in xmlfile.findall(group, None):
                     collection.append((source_file, element))
-
-        # Push elements with "equals" to the end
-        # _agg_tilesheets.sort(key=lambda t: t[1].get("equals", None) is not None)
-        # _agg_tiles.sort(key=lambda t: t[1].get("equals", None) is not None)
-        # _agg_animations.sort(key=lambda t: t[1].get("equals", None) is not None)
 
         for source_file, element in _agg_tilesheets:
             _raw_id = element.get("id")
@@ -175,25 +167,13 @@ if __name__ == "__main__":
         with open("clean/parsed.json", "r") as file:
             data = DataContainer.model_validate_json(file.read())
 
-        stage = Stage(data)
+        stage = Stage(width=512, height=512, data=data)
         # color = DEFAULT_COLOR
         color = Color.parse_color("33f", 4)
         for i in range(3):
             for j in range(3):
                 stage.render("young_dragon", "young_dragon.fly", index=i*3+j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color)
         stage.render("young_dragon", "young_dragon.fly", index=9, extra_offset_x=0, extra_offset_y=3*48, extra_color=color)
-        # colors = [
-        #     Color.parse_color("#E40303", 1.0),
-        #     Color.parse_color("#FF8C00", 1.0),
-        #     Color.parse_color("#FFED00", 1.0),
-        #     Color.parse_color("#008026", 1.0),
-        #     Color.parse_color("#004CFF", 1.0),
-        #     Color.parse_color("#732982", 1.0),
-        # ]
-        # for i, color in enumerate(colors, -3):
-        #     for j in range(-5, 5):
-        #         extra_color_scale = 0.75 + (((i + j) % 5) / 10) # 0.75 ~ 1.25
-        #         stage.render("young_dragon", "young_dragon.fly", index=j, extra_offset_x=i*48, extra_offset_y=j*48, extra_color=color * extra_color_scale)
         stage.image.save("tmp.png")
 
     # create_data()

@@ -13,3 +13,9 @@ dependencies = [
     "pydantic>=2.11.7",
     "types-lxml>=2025.3.30",
 ]
+
+[dependency-groups]
+notebooks = [
+    "marimo>=0.14.10",
+    "ruff>=0.12.2",
+]
