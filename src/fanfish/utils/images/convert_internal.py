@@ -52,20 +52,37 @@ def convert_tilesheet(tilesheet: XmlTileSheet) -> TileSheet:
                     offsetY=tilesheet.offsetY,
                 )
                 frames.append(img_frame)
-    return TileSheet(id=tilesheet.id, sheet_file=path, frames=frames)
+    return TileSheet(id=tilesheet.id, sheet_file=path, frames=frames, base_width=tilesheet.width, base_height=tilesheet.height)
 
 
 def convert_tile(tile: XmlTile) -> Tile:
     parts = []
-    parts.append(
-        TilePart(
-            sheet_id=tile.sheet.id,
-            x=tile.x,
-            y=tile.y,
-            offsetX=tile.offsetX,
-            offsetY=tile.offsetY,
+    if tile.equals:
+        eq = tiles[tile.equals]
+        return Tile(id=tile.id, base_width=eq.base_width, base_height=eq.base_height, subtiles=eq.subtiles)
+
+    if tile.sheet.id:
+        _sheet = tilesheets[tile.sheet.id]
+        base_width = _sheet.base_width
+        base_height = _sheet.base_height
+        parts.append(
+            TilePart(
+                sheet_id=tile.sheet.id,
+                x=tile.x,
+                y=tile.y,
+                offsetX=tile.offsetX,
+                offsetY=tile.offsetY,
+            )
         )
-    )
+    elif tile.id in ("empty", "no_place"):
+        base_width = base_height = 16
+    elif tile.subtiles:
+        base_width = max(subt.sheet.width for subt in tile.subtiles)
+        base_height = max(subt.sheet.width for subt in tile.subtiles)
+    else:
+        # I had to manually remove 'blood' from core/lang/languages.xml... no clue how it got there
+        raise RuntimeError(f"Bad tile: {tile}")
+
     for subtile in tile.subtiles:
         parts.append(
             TilePart(
@@ -76,7 +93,7 @@ def convert_tile(tile: XmlTile) -> Tile:
                 offsetY=subtile.offsetY,
             )
         )
-    return Tile(id=tile.id, subtiles=parts)
+    return Tile(id=tile.id, subtiles=parts, base_width=base_width, base_height=base_height)
 
 
 def convert_animation(animation: XmlAnimation) -> AnimationSequence:
@@ -112,8 +129,6 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
                     x=base_frame.x + count,
                     y=base_frame.y,
                     # TODO TEST WHICH OFFSET CALCULATION IS RIGHT
-                    # offsetX=base_frame.offsetX + animation.offsetX,
-                    # offsetY=base_frame.offsetY + animation.offsetY,
                     offsetX=base_frame.offsetX,
                     offsetY=base_frame.offsetY,
                     color=animation.color,
@@ -151,7 +166,7 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
         source = animations[appended.animation]
         for abs in source.animations:
             sequence = AbstractAnimation(
-                overwrite_tile_id=appended.tile,
+                overwrite_tile_id=abs.overwrite_tile_id or appended.tile,
                 rotate=abs.rotate,
                 repeat=abs.repeat,
                 scale=abs.scale,
@@ -159,9 +174,16 @@ def convert_animation(animation: XmlAnimation) -> AnimationSequence:
                 flip=appended.flip,
                 frames=copy.deepcopy(abs.frames),
             )
-            if appended.color:
-                for frame in sequence.frames:
-                    frame.color *= appended.color
+
+            _tile = tiles[appended.tile]
+            append_offset_x = appended.x + _tile.base_width * appended.offsetX
+            append_offset_y = appended.y + _tile.base_height * appended.offsetY
+
+            for frame in sequence.frames:
+                frame.color *= appended.color
+                frame.offsetX += append_offset_x
+                frame.offsetY += append_offset_y
+
             abs_animations.append(sequence)
     # ---
     return AnimationSequence(id=animation.id, animations=abs_animations)
@@ -223,29 +245,43 @@ if __name__ == "__main__":
             converted = convert_tilesheet(tilesheet)
             tilesheets[converted.id] = converted
 
-        for tile in xml_tiles.values():
-            converted = convert_tile(tile)
-            tiles[converted.id] = converted
-
-        _missing: set[str] = set(xml_animations.keys())
-        _solved: set[str] = set()
+        # Tiles
+        _missing_tiles: set[str] = set(xml_tiles.keys())
+        _solved_tiles: set[str] = set()
 
         for i in range(10):
-            for animation_id in _missing:
+            for tile_id in _missing_tiles:
+                tile = xml_tiles[tile_id]
+                if (eq := tile.equals) is not None and eq not in _solved_tiles:
+                    continue
+
+                converted = convert_tile(tile)
+                tiles[converted.id] = converted
+                _solved_tiles.add(tile_id)
+            _missing_tiles -= _solved_tiles
+        if _missing_tiles:
+            raise RuntimeError("Could not resolve tiles equals=")
+
+        # Animations
+        _missing_anims: set[str] = set(xml_animations.keys())
+        _solved_anims: set[str] = set()
+
+        for i in range(10):
+            for animation_id in _missing_anims:
                 animation = xml_animations[animation_id]
-                if (eq := animation.equals) is not None and eq not in _solved:
+                if (eq := animation.equals) is not None and eq not in _solved_anims:
                     continue
                 if any(
-                    (an := dependency.animation) is not None and an not in _solved
+                    (an := dependency.animation) is not None and an not in _solved_anims
                     for dependency in animation.appends
                 ):
                     continue
 
                 converted = convert_animation(animation)
                 animations[converted.id] = converted
-                _solved.add(animation_id)
-            _missing -= _solved
-        if _missing:
+                _solved_anims.add(animation_id)
+            _missing_anims -= _solved_anims
+        if _missing_anims:
             raise RuntimeError("Could not resolve animations equals=")
 
         print("tilesheets", len(tilesheets))

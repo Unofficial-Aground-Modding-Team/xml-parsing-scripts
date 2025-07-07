@@ -16,6 +16,8 @@ class TilePart(BaseModel):
 
 class Tile(BaseModel):
     id: str
+    base_width: int
+    base_height: int
     subtiles: list[TilePart]
 
 
@@ -34,6 +36,8 @@ class ImageFrame(BaseModel):
 class TileSheet(BaseModel):
     id: str
     sheet_file: Path
+    base_width: int
+    base_height: int
     frames: list[ImageFrame]
     # TODO consider dx and dy? seem to be related to parallax
 

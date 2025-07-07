@@ -231,6 +231,7 @@ def parse_sub_tiles(source_file: Path, root: etree._Element) -> list[XmlSubTile]
 def load_tile(source_file: Path, tile: etree._Element) -> XmlTile:
     "Parses a <tile> element"
     _id = tile.get("id")
+    # NOTE THIS IS BUGGED (EQUALS TILE MAY NOT HAVE BEEN LOADED YET) BUT DOES NOT MATTERS SINCE I LOOK FOR THE EQUALS ELSEWHERE
     base_tile = xml_tiles.get(tile.get("equals", ""), DEFAULT_XML_TILE)
     _sheet = tile.get("sheet", None)
     assert _id is not None and (

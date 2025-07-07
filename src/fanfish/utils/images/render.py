@@ -65,13 +65,14 @@ class Stage:
                     cropped = Image.fromarray(_arr)
 
                 # TODO DOUBLE CHECK OFFSET MATH
-                combined_offset_X = subtile.offsetX + frame.offsetX
-                combined_offset_Y = subtile.offsetY + frame.offsetY
+                combined_offset_X = sheet_image.offsetX + subtile.offsetX + frame.offsetX
+                combined_offset_Y = sheet_image.offsetY + subtile.offsetY + frame.offsetY
+
                 self.image.paste(
                     cropped,
                     (
-                        ((self.image.width - sheet_image.width) // 2) + int(combined_offset_X) + extra_offset_x,
-                        ((self.image.height - sheet_image.height) // 2) + int(combined_offset_Y) + extra_offset_y,
+                        int(combined_offset_X) + extra_offset_x,
+                        int(combined_offset_Y) + extra_offset_y,
                     ),
                     mask=cropped,
                 )
@@ -135,30 +136,46 @@ if __name__ == "__main__":
             converted = convert_tilesheet(tilesheet)
             tilesheets[converted.id] = converted
 
-        for tile in xml_tiles.values():
-            converted = convert_tile(tile)
-            tiles[converted.id] = converted
 
-        _missing: set[str] = set(xml_animations.keys())
-        _solved: set[str] = set()
+        # Tiles
+        _missing_tiles: set[str] = set(xml_tiles.keys())
+        _solved_tiles: set[str] = set()
 
         for i in range(10):
-            for animation_id in _missing:
+            for tile_id in _missing_tiles:
+                tile = xml_tiles[tile_id]
+                if (eq := tile.equals) is not None and eq not in _solved_tiles:
+                    continue
+
+                converted = convert_tile(tile)
+                tiles[converted.id] = converted
+                _solved_tiles.add(tile_id)
+            _missing_tiles -= _solved_tiles
+        if _missing_tiles:
+            raise RuntimeError("Could not resolve tiles equals=")
+
+        # Animations
+        _missing_anims: set[str] = set(xml_animations.keys())
+        _solved_anims: set[str] = set()
+
+        for i in range(10):
+            for animation_id in _missing_anims:
                 animation = xml_animations[animation_id]
-                if (eq := animation.equals) is not None and eq not in _solved:
+                if (eq := animation.equals) is not None and eq not in _solved_anims:
                     continue
                 if any(
-                    (an := dependency.animation) is not None and an not in _solved
+                    (an := dependency.animation) is not None and an not in _solved_anims
                     for dependency in animation.appends
                 ):
                     continue
 
                 converted = convert_animation(animation)
                 animations[converted.id] = converted
-                _solved.add(animation_id)
-            _missing -= _solved
-        if _missing:
+                _solved_anims.add(animation_id)
+            _missing_anims -= _solved_anims
+        if _missing_anims:
             raise RuntimeError("Could not resolve animations equals=")
+
         data = DataContainer(tilesheets=tilesheets, tiles=tiles, animations=animations)
         with open("clean/parsed.json", "w") as file:
             file.write(data.model_dump_json())
